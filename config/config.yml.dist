@@ -35,4 +35,4 @@ contenttype: [members-only-post, event]
 # Other authenticators
 #######################
 
-authenticators: [ 'RixBeck/HirAuthenticator' ]
+authenticators: [ 'RixBeck/WsseAuthenticator' ]
