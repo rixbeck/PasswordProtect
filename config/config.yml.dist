@@ -30,3 +30,9 @@ form: passwordform.twig
 
 # Content type to restrict users on. Note: use the SINGULAR form, here!
 contenttype: [members-only-post, event]
+
+#######################
+# Other authenticators
+#######################
+
+authenticators: [ 'RixBeck/HirAuthenticator' ]

@@ -7,6 +7,9 @@ use Silex\Application;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\Security\Core\Authentication\Provider\AuthenticationProviderInterface;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Twig_Markup;
 
 class Checker
@@ -30,7 +33,8 @@ class Checker
     public function __construct(
         Application $app,
         array $config
-    ) {
+    )
+    {
         $this->app = $app;
         $this->config = $config;
     }
@@ -58,30 +62,6 @@ class Checker
     }
 
     /**
-     * Function to check if session is set, otherwise redirect and login
-     *
-     * @return \Twig_Markup
-     */
-    protected function checkSessionAndRedirect()
-    {
-        if ($this->app['session']->get('passwordprotect') == 1) {
-            return new Twig_Markup("<!-- Password protection OK! -->", 'UTF-8');
-        } else {
-            $redirectto = $this->app['storage']->getContent($this->config['redirect'], ['returnsingle' => true]);
-            $returnto = $this->app['request_stack']->getCurrentRequest()->getRequestUri();
-            if ($redirectto===false) {
-                $linkTo = $this->config['redirect'];
-            }
-            else {
-                $linkTo = $redirectto->link();
-            }
-            $response = new RedirectResponse($linkTo. "?returnto=" . urlencode($returnto));
-            $response->send();
-            die();
-        }
-    }
-
-    /**
      * Check if we're currently allowed to view the page. If not, redirect to
      * the password page.
      *
@@ -104,6 +84,27 @@ class Checker
             return false;
         }
 
+        if ($this->config['authenticators']) {
+            $authenticators = (array) $this->config['authenticators'];
+            $token = new UsernamePasswordToken($data['username'], $data['password'], 'PasswordProtect');
+            foreach ($authenticators as $providerExtensionId) {
+                if (array_key_exists($providerExtensionId, $this->app['extensions'])) {
+                    $provider = $this->app['extensions'][$providerExtensionId];
+                    /** @var AuthenticationProviderInterface $provider */
+                    if ($provider instanceof AuthenticationProviderInterface) {
+                        try {
+                            $provider->authenticate($token);
+
+                            return $token->getUser();
+                        } catch (AuthenticationException $e) {
+                        }
+                    }
+                }
+                else {
+                    // @todo Try to log 'No authprovider NNN found'
+                }
+            }
+        }
         // If we only use the password, the 'users' array is just one element.
         if ($this->config['password_only']) {
             $visitors = array('visitor' => $this->config['password']);
@@ -119,7 +120,7 @@ class Checker
                     return $visitor;
                 } elseif (($this->config['encryption'] == 'password_hash') && password_verify($data['password'], $password)) {
                     return $visitor;
-                } elseif (($this->config['encryption'] == 'plaintext') && ($data['password'] === $password))  {
+                } elseif (($this->config['encryption'] == 'plaintext') && ($data['password'] === $password)) {
                     return $visitor;
                 }
             }
@@ -128,5 +129,28 @@ class Checker
         // If we get here, no dice.
         return false;
 
+    }
+
+    /**
+     * Function to check if session is set, otherwise redirect and login
+     *
+     * @return \Twig_Markup
+     */
+    protected function checkSessionAndRedirect()
+    {
+        if ($this->app['session']->get('passwordprotect') == 1) {
+            return new Twig_Markup("<!-- Password protection OK! -->", 'UTF-8');
+        } else {
+            $redirectto = $this->app['storage']->getContent($this->config['redirect'], ['returnsingle' => true]);
+            $returnto = $this->app['request_stack']->getCurrentRequest()->getRequestUri();
+            if ($redirectto === false) {
+                $linkTo = $this->config['redirect'];
+            } else {
+                $linkTo = $redirectto->link();
+            }
+            $response = new RedirectResponse($linkTo."?returnto=".urlencode($returnto));
+            $response->send();
+            die();
+        }
     }
 }
