@@ -112,7 +112,7 @@ class PasswordProtectExtension
 
         // Render the form, and show it it the visitor.
         //$this->twigFilesystem->addPath(__DIR__);
-        $html = $this->app['twig']->render($formView, array('form' => $form->createView()));
+        $html = $this->app['twig']->render($formView, array('form' => $form->createView(), 'config'=> $this->config));
 
         return new Twig_Markup($html, 'UTF-8');
 

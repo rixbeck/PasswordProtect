@@ -2,12 +2,11 @@
 
 namespace Bolt\Extension\Bolt\PasswordProtect\Handler;
 
-use Bolt\Twig\Handler\UtilsHandler;
+use Bolt\Storage;
 use Silex\Application;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
-use Symfony\Component\HttpFoundation\RedirectResponse;
-use Bolt\Storage;
 use Twig_Markup;
 
 class Checker
@@ -70,7 +69,13 @@ class Checker
         } else {
             $redirectto = $this->app['storage']->getContent($this->config['redirect'], ['returnsingle' => true]);
             $returnto = $this->app['request_stack']->getCurrentRequest()->getRequestUri();
-            $response = new RedirectResponse($redirectto->link(). "?returnto=" . urlencode($returnto));
+            if ($redirectto===false) {
+                $linkTo = $this->config['redirect'];
+            }
+            else {
+                $linkTo = $redirectto->link();
+            }
+            $response = new RedirectResponse($linkTo. "?returnto=" . urlencode($returnto));
             $response->send();
             die();
         }

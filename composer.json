@@ -20,7 +20,7 @@
     "prefer-stable": true,
     "autoload": {
         "psr-4": {
-            "Bolt\\Extension\\Bolt\\PasswordProtect\\": "src/"
+            "Bolt\\Extension\\Bolt\\PasswordProtect\\": "src"
         }
     },
     "extra": {
