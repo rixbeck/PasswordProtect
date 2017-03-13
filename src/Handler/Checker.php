@@ -3,6 +3,7 @@
 namespace Bolt\Extension\Bolt\PasswordProtect\Handler;
 
 use Bolt\Storage;
+use GuzzleHttp\Exception\RequestException;
 use Silex\Application;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -86,10 +87,11 @@ class Checker
 
         if ($this->config['authenticators']) {
             $authenticators = (array) $this->config['authenticators'];
-            $token = new UsernamePasswordToken($data['username'], $data['password'], 'PasswordProtect');
-            foreach ($authenticators as $providerExtensionId) {
-                if (array_key_exists($providerExtensionId, $this->app['extensions'])) {
-                    $provider = $this->app['extensions'][$providerExtensionId];
+            $token = new UsernamePasswordToken($data['username'], $data['password'], 'PasswordProtect', ['visitor']);
+            $extensions = $this->app['extensions']->all();
+            foreach ($authenticators as $providerExtensionId=>$providerId) {
+                if (array_key_exists($providerExtensionId, $extensions) && $this->app->offsetExists($providerId)) {
+                    $provider = $this->app[$providerId];
                     /** @var AuthenticationProviderInterface $provider */
                     if ($provider instanceof AuthenticationProviderInterface) {
                         try {
@@ -97,7 +99,13 @@ class Checker
 
                             return $token->getUser();
                         } catch (AuthenticationException $e) {
+
+                            return false;
+                        } catch (RequestException $e) {
+
+                            return false;
                         }
+
                     }
                 }
                 else {
